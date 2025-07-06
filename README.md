@@ -25,7 +25,7 @@ The system is designed to train first responders for car accident scenarios thro
 4. **Session Recording**: All conversations are saved to a database for analysis
 5. **Performance Review**: Second AI agent evaluates the conversation and provides feedback
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Workflow Engine**: [n8n](https://n8n.io/) - No-code automation platform
 - **Database**: PostgreSQL for conversation storage
@@ -42,7 +42,7 @@ Frontend (JavaScript) → Webhook → n8n Workflow → AI Models → Database �
 
 The system uses webhooks to trigger n8n workflows, which route conversations through different AI agents based on the scenario and conversation state.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
