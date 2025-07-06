@@ -67,7 +67,8 @@ The system uses webhooks to trigger n8n workflows, which route conversations thr
    ```
 
 4. **Access the application**
-   - Open your browser and navigate to `http://localhost:8080`
+   - Open your browser and navigate to `http://localhost:8080` for the training interface
+   - Access the n8n workflow editor at `http://localhost:5678` to view or modify workflows. The first time you will need to import it from the repo.
    - Select a scenario and start the conversation
    - Click "Stop" when the conversation is complete to receive evaluation
 
