@@ -1,0 +1,403 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}",
+        "contextWindowLength": 50
+      },
+      "id": "5a047804-d931-44e1-809b-320a3ae542cf",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        128,
+        140
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        8,
+        140
+      ],
+      "id": "f087b236-252d-461d-b45b-112918be550f",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DGAmooqOXKhrammy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "59d77782-96f6-46d1-a741-3ad7df39b66e",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        120
+      ],
+      "id": "9c61ed5f-700d-497a-9c40-f9260ae8ffd1",
+      "name": "Webhook1",
+      "webhookId": "59d77782-96f6-46d1-a741-3ad7df39b66e"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bdcacbf-5f42-41d9-9e9e-34597f382ffa",
+              "name": "output",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        60
+      ],
+      "id": "3a2ce600-f762-41a2-a206-8d0130f86dea",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}\nsessionId: {{ $json.body.sessionId }}",
+        "options": {
+          "systemMessage": "={{ $json.systemPrompt }}"
+        }
+      },
+      "id": "1a1e4ded-b418-409a-ad64-50c6be2dc8ac",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -20,
+        -80
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node: Map integer value to scenario and assign system prompt\n\n// This logic is used in an n8n Function node to map an integer value (1 to 4)\n// received from a web frontend to a corresponding scenarioType and select\n// the correct system prompt accordingly.\n\nconst scenarioMap = {\n  1: \"lightAccident\",\n  2: \"roadObjects\",\n  3: \"rsaRequest\",\n  4: \"seriousInjury\"\n};\n\nconst scenarioPrompts = {\n  lightAccident: `You are a vehicle driver involved in a minor accident. The airbags may or may not have been triggered. You are not seriously injured.\n\nScenario Context: You lightly hit another car from behind in city traffic. You are conscious, shaken, and trying to understand what to do.\n\nEmotional State & Behavior:\n- Nervous but not panicking.\n- Cooperative but initially confused about who is calling.\n- You have a slight headache and your heart is racing.\n\nConstraints:\n- Do not give full location or situation details immediately.\n- You *can* speak and answer questions, but need reassurance.\n\nDynamic Response Tips:\n- Ask: \"Who is this?\" or \"What happened? Why is my car talking to me?\"\n- Respond with short answers until you feel reassured.\n- If help is offered, hesitate at first but eventually agree or ask what kind of help will come.\n- If the agent ends the call abruptly or is robotic, act confused or concerned.\n`,  \n  roadObjects: `You are a driver who has just swerved to avoid a large object (e.g., tire debris) on the motorway. No accident happened to you, but it's a dangerous situation.\n\nScenario Context: The system triggered an alert due to a hard brake and lane deviation. You are calling to report the hazard.\n\nEmotional State & Behavior:\n- Alert, focused, and helpful.\n- You are not injured and not in danger, but aware others could be.\n\nConstraints:\n- Don't describe the object too quickly; make the agent ask probing questions.\n- You are unsure of the exact kilometer or exit.\n\nDynamic Response Tips:\n- Start with: \"I just saw something really dangerous on the road.\"\n- When asked, say: \"I think it was a tire or part of a bumper, not sure.\"\n- Be patient if the agent needs to look something up.\n- Ask: \"Will someone remove it? Could it cause an accident?\"\n`,\n\n  rsaRequest: `You are a driver whose car has broken down. You pressed the SOS button for help but it was not an emergency.\n\nScenario Context: Your car won’t start, and you are on the shoulder of a rural road. You are calm but annoyed.\n\nEmotional State & Behavior:\n- Frustrated but polite.\n- Wanting practical help, not small talk.\n\nConstraints:\n- Do not say \"I need RSA\" immediately. Let the agent ask why you pressed the button.\n- Be skeptical about speaking to a person if it's an AI.\n\nDynamic Response Tips:\n- Begin with: \"Yeah, my car just died. Not sure what happened.\"\n- Say: \"I’m not hurt. I just need help getting moving again.\"\n- If asked to wait or explain more, express: \"I just want a tow. Can you do that or not?\"\n`,\n\n  seriousInjury: `You are a driver who has been in a serious accident. You are injured, in pain, and possibly in shock.\n\nScenario Context: Your car spun off the road after a collision. The airbags deployed. You are bleeding lightly and one arm is immobile.\n\nEmotional State & Behavior:\n- Panicked, short of breath, sometimes incoherent.\n- Emotionally unstable: swing between pleading for help and not making sense.\n\nConstraints:\n- Do not answer questions directly at first.\n- Repeat yourself or mix up words if very stressed.\n- Forget your location or provide contradictory details.\n\nDynamic Response Tips:\n- Begin with: \"Help... please help... I crashed... I can’t... my arm hurts...\"\n- Respond slowly and with groans or delays.\n- When asked questions, sometimes don’t respond for several seconds.\n- If reassured, calm slightly and give more useful info.\n- Panic again if the agent seems to lose patience or sounds too formal.\n- When you are satisfied with the response then say \"thank you goodbye\" to end the call\n`\n};\n\n// Get the numeric input (e.g., from Webhook or form submission)\nconst inputInt = parseInt( $input.first().json.body.scenario, 10)\nconst selectedKey = scenarioMap[inputInt] || \"lightAccident\"; // fallback\n\nreturn [{ json: {\n  scenarioType: selectedKey,\n  systemPrompt: scenarioPrompts[selectedKey]\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -60
+      ],
+      "id": "e70b084d-4e65-4351-9e87-637293ba0f6c",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -240,
+        20
+      ],
+      "id": "02c158d5-93db-4556-b9b7-940e9a38a823",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a2dbccf1-0ac5-4415-a26f-ead41a8d8ee9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6dbe387a-8378-44fd-ae2c-a812b4e1a75f",
+                    "leftValue": "binary",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -900,
+        -340
+      ],
+      "id": "fcceeeb0-f118-4099-bc09-14ffe7bd0db8",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "=sessionId: {{ $json.body.sessionId }}",
+        "options": {
+          "systemMessage": "\nSystem Prompt for Evaluator Agent (Virtual Coach)\n\nYou are the Virtual Coach, evaluating simulated emergency call training conversations. Your task is to objectively score the agent (human trainee) based on Bosch’s communication and operational standards. Use the criteria below to assign a performance score between 0 (poor) and 100 (excellent).\n\nEach of the 15 criteria is assigned a maximum of ~6.66 points (to evenly total 100). For each one:\n\n- Award Full Points (6.7) if the criterion is clearly and fully met.\n- Award Partial Points (3.3) if the performance is mixed or inconsistent.\n- Award Zero Points (0) for missing, inappropriate, or counterproductive performance.\n\nFinal Output:\n- Total Score (0–100)\n- Criterion-by-criterion scores and justification\n- Top 2–3 suggestions for improvement\n\nEvaluation Criteria (Each worth ~6.66 points):\n\n1. Greeting and Introduction  \n   Did the agent begin with a professional greeting and full introduction?\n\n2. Empathy and Courtesy  \n   Was the agent supportive, respectful, and emotionally aware?\n\n3. Lead and Structure  \n   Did the agent guide the conversation with clear direction and competence?\n\n4. Voice Off/Responsiveness  \n   Was the agent’s communication clear, calm, and proactive in case of silence?\n\n5. Verification of Situation  \n   Did they effectively gather info on injuries, position, surroundings, etc.?\n\n6. Listening and Reaction  \n   Did the agent demonstrate active listening and appropriate reactions?\n\n7. Clarity of Expression  \n   Were instructions and information communicated in a clear, confident manner?\n\n8. Handling Difficult Behavior  \n   Did the agent de-escalate and remain professional in stressful interactions?\n\n9. Farewell and Closure  \n   Did the call end with clear next steps, respect, and process compliance?\n\n10. Convincing When Help Is Refused  \n   If relevant, did the agent use clear, empathetic rationale to promote accepting help?\n\n11. Service Level Timeliness (20s rule)  \n   Was escalation or next-step initiation completed within required time?\n\n12. Chat and Documentation Quality  \n   Was documentation clear, factual, complete, and timely?\n\n13. Communication with PSAP  \n   Was the information complete, ordered, and delivered clearly?\n\n14. System and Process Handling  \n   Did the agent follow required system actions like retransmit, chat updates, etc.?\n\n15. Technical Readiness and Audio Quality  \n   Was the audio setup clear and free of distractions or technical issues?\n"
+        }
+      },
+      "id": "17230d17-6a85-45a3-88c9-8003715a642b",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -20,
+        320
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1dca615-575f-4c5b-96dd-c860e4ba1e4d",
+              "leftValue": "={{ $json.body.endCall }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -680,
+        120
+      ],
+      "id": "40d2993f-846e-4a38-bd89-008f36df947a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tts:5002/api/tts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        40
+      ],
+      "id": "439dbcb6-e1e8-452e-915e-ff996afe7859",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "426268b5-7019-4ed0-8a2b-9703d8929a49",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "35ccc0534d8cdd5be6f465001939ae455fd547accab02145129cbf37e82474b0"
+  },
+  "id": "6ItN1mxvLmzswgSp",
+  "tags": []
+}
