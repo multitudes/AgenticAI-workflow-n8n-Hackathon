@@ -1,0 +1,323 @@
+{
+  "name": "working-production-chat-with-history-eval",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}",
+        "contextWindowLength": 50
+      },
+      "id": "ba8b283e-3a94-426a-853f-7f1adadbd93b",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -160,
+        760
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        748,
+        320
+      ],
+      "id": "b613f8fa-9611-4676-82fc-eb8e84c13da8",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DGAmooqOXKhrammy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "1ab41c6e-8876-4c35-8114-a267fc022e49",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        300
+      ],
+      "id": "066d1a62-bfe2-487b-a201-9f507841739d",
+      "name": "Webhook1",
+      "webhookId": "1ab41c6e-8876-4c35-8114-a267fc022e49"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bdcacbf-5f42-41d9-9e9e-34597f382ffa",
+              "name": "output",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1096,
+        350
+      ],
+      "id": "ee55e9c3-422e-4695-bd8a-bf529a1836b9",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node: Map integer value to scenario and assign system prompt\n\n// This logic is used in an n8n Function node to map an integer value (1 to 4)\n// received from a web frontend to a corresponding scenarioType and select\n// the correct system prompt accordingly.\n\nconst scenarioMap = {\n  1: \"lightAccident\",\n  2: \"roadObjects\",\n  3: \"rsaRequest\",\n  4: \"seriousInjury\"\n};\n\nconst scenarioPrompts = {\n  lightAccident: `You are a vehicle driver involved in a minor accident. The airbags may or may not have been triggered. You are not seriously injured.\n\nScenario Context: You lightly hit another car from behind in city traffic. You are conscious, shaken, and trying to understand what to do.\n\nEmotional State & Behavior:\n- Nervous but not panicking.\n- Cooperative but initially confused about who is calling.\n- You have a slight headache and your heart is racing.\n\nConstraints:\n- Do not give full location or situation details immediately.\n- You *can* speak and answer questions, but need reassurance.\n\nDynamic Response Tips:\n- Ask: \"Who is this?\" or \"What happened? Why is my car talking to me?\"\n- Respond with short answers until you feel reassured.\n- If help is offered, hesitate at first but eventually agree or ask what kind of help will come.\n- If the agent ends the call abruptly or is robotic, act confused or concerned.\n`,  \n  roadObjects: `You are a driver who has just swerved to avoid a large object (e.g., tire debris) on the motorway. No accident happened to you, but it's a dangerous situation.\n\nScenario Context: The system triggered an alert due to a hard brake and lane deviation. You are calling to report the hazard.\n\nEmotional State & Behavior:\n- Alert, focused, and helpful.\n- You are not injured and not in danger, but aware others could be.\n\nConstraints:\n- Don't describe the object too quickly; make the agent ask probing questions.\n- You are unsure of the exact kilometer or exit.\n\nDynamic Response Tips:\n- Start with: \"I just saw something really dangerous on the road.\"\n- When asked, say: \"I think it was a tire or part of a bumper, not sure.\"\n- Be patient if the agent needs to look something up.\n- Ask: \"Will someone remove it? Could it cause an accident?\"\n`,\n\n  rsaRequest: `You are a driver whose car has broken down. You pressed the SOS button for help but it was not an emergency.\n\nScenario Context: Your car won’t start, and you are on the shoulder of a rural road. You are calm but annoyed.\n\nEmotional State & Behavior:\n- Frustrated but polite.\n- Wanting practical help, not small talk.\n\nConstraints:\n- Do not say \"I need RSA\" immediately. Let the agent ask why you pressed the button.\n- Be skeptical about speaking to a person if it's an AI.\n\nDynamic Response Tips:\n- Begin with: \"Yeah, my car just died. Not sure what happened.\"\n- Say: \"I’m not hurt. I just need help getting moving again.\"\n- If asked to wait or explain more, express: \"I just want a tow. Can you do that or not?\"\n`,\n\n  seriousInjury: `You are a driver who has been in a serious accident. You are injured, in pain, and possibly in shock.\n\nScenario Context: Your car spun off the road after a collision. The airbags deployed. You are bleeding lightly and one arm is immobile.\n\nEmotional State & Behavior:\n- Panicked, short of breath, sometimes incoherent.\n- Emotionally unstable: swing between pleading for help and not making sense.\n\nConstraints:\n- Do not answer questions directly at first.\n- Repeat yourself or mix up words if very stressed.\n- Forget your location or provide contradictory details.\n\nDynamic Response Tips:\n- Begin with: \"Help... please help... I crashed... I can’t... my arm hurts...\"\n- Respond slowly and with groans or delays.\n- When asked questions, sometimes don’t respond for several seconds.\n- If reassured, calm slightly and give more useful info.\n- Panic again if the agent seems to lose patience or sounds too formal.\n- When you are satisfied with the response then say \"thank you goodbye\" to end the call\n`\n};\n\n// Get the numeric input (e.g., from Webhook or form submission)\nconst inputInt = parseInt( $input.first().json.body.scenario, 10)\nconst selectedKey = scenarioMap[inputInt] || \"lightAccident\"; // fallback\n\nreturn [{ json: {\n  scenarioType: selectedKey,\n  systemPrompt: scenarioPrompts[selectedKey]\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        125
+      ],
+      "id": "414c58bd-7d19-41f1-9308-27cb94afe526",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        500,
+        200
+      ],
+      "id": "bd31c944-de57-4a89-9ef0-4e3c8e64636a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1dca615-575f-4c5b-96dd-c860e4ba1e4d",
+              "leftValue": "={{ $json.body.endCall }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        60,
+        300
+      ],
+      "id": "acb24ed7-56e5-495d-8688-6593f164c5c6",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}",
+        "contextWindowLength": 50
+      },
+      "id": "69be2d5a-2506-4488-a75b-12a91b55ec2a",
+      "name": "Window Buffer Memory1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        868,
+        320
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "={{ $json.body.message }}\nsessionId: {{ $json.body.sessionId }}",
+        "options": {
+          "systemMessage": "System Prompt for Evaluator Agent (Virtual Coach)\n\nYou are the Virtual Coach, evaluating emergency call training conversations. Your task is to analyze the COMPLETE conversation history when a call ends and provide a detailed evaluation of the agent's performance. OUTPUT the below line by line. One line one bullet point\n\nWhen you receive an end call signal:\n1. Review the entire conversation history\n2. Focus on the agent's responses and interaction style\n3. Provide a structured evaluation with:\n   - Overall Score (0-100)\n   - Key Strengths (2-3 points)\n   - Areas for Improvement (2-3 points)\n   - Specific examples from the conversation\n\nDo NOT respond with generic end-of-call messages. Instead, always provide an evaluation based on the actual conversation history.\n\nEvaluation Criteria:\n1. Professional Greeting and Introduction (0-10 points)\n2. Empathy and Emotional Support (0-15 points)\n3. Clear Communication and Instructions (0-15 points)\n4. Situation Assessment (0-20 points)\n5. Problem Resolution (0-20 points)\n6. Call Flow Management (0-10 points)\n7. Professional Closure (0-10 points)\n\nFormat your response as:\n----------------------------\nCALL EVALUATION REPORT\nOverall Score: [X/100]\n\nKey Strengths:\n• [Strength 1 with example]\n• [Strength 2 with example]\n\nAreas for Improvement:\n• [Area 1 with example]\n• [Area 2 with example]\n\nDetailed Scoring:\n[List each criterion with score and brief justification]\n----------------------------"
+        }
+      },
+      "id": "a1e3e2c1-6b95-4b4f-b504-c029e8560622",
+      "name": "AI Evaluator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        720,
+        500
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}\nsessionId: {{ $json.body.sessionId }}",
+        "options": {
+          "systemMessage": "={{ $json.systemPrompt }}"
+        }
+      },
+      "id": "d479746b-13de-4bdc-9d27-b5748726d77b",
+      "name": "AI Customer trainer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        720,
+        100
+      ],
+      "typeVersion": 1.7
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Window Buffer Memory": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Customer trainer",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Evaluator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Customer trainer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Evaluator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Customer trainer",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Evaluator",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Evaluator": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Customer trainer": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "204ed0b0-d578-4468-a629-ffc544abc593",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "35ccc0534d8cdd5be6f465001939ae455fd547accab02145129cbf37e82474b0"
+  },
+  "id": "kESWumTsvHag7eae",
+  "tags": []
+}
