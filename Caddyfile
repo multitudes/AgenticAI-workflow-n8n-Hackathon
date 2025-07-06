@@ -1,0 +1,16 @@
+:8080 {
+    root * /srv
+    file_server
+
+    # Proxy all webhook requests to n8n
+    reverse_proxy /webhook/* http://n8n:5678 {
+        header_up Host {http.reverse_proxy.upstream.hostport}
+    }
+
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "*"
+        Access-Control-Allow-Credentials "true"
+    }
+}

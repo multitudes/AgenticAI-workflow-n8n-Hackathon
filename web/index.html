@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>N8N Chat Interface</title>
+    <style>
+        .chat-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .chat-messages { height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+        .message { margin-bottom: 10px; padding: 8px; border-radius: 4px; }
+        .user-message { background-color: #e3f2fd; text-align: right; }
+        .bot-message { background-color: #f5f5f5; }
+        .input-area { margin-top: 20px; display: flex; }
+        #message-input { flex-grow: 1; margin-right: 10px; padding: 8px; }
+        .service-selector {
+            margin-bottom: 20px;
+            padding: 8px;
+            width: 200px;
+        }
+         .end-call {
+        background-color: #ff4444;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        margin-left: 10px;
+        cursor: pointer;
+        }
+        .end-call:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages"></div>
+         <select id="service-selector" class="service-selector">
+            <option value="1">Supportagent1</option>
+            <option value="2">Supportagent2</option>
+            <option value="3">Supportagent3</option>
+            <option value="4">Supportagent4</option>
+            <option value="5">Supportagent5</option>
+        </select>
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="startRecording()">🎤 Record</button>
+            <button id="end-call-button" class="end-call">🔚 End Call</button>          
+        </div>
+    </div>
+    <script>
+        const messagesContainer = document.getElementById('chat-messages');
+        document.getElementById('end-call-button').addEventListener('click', endCall);    
+        const sessionId = Math.random().toString(36).substring(2);
+        
+        
+        function addMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.textContent = message;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const scenario = document.getElementById('service-selector').value;
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, true);
+            
+            try {
+                            //   const response = await fetch('http://localhost:5678/webhook/1ab41c6e-8876-4c35-8114-a267fc022e49', {
+                const response = await fetch('http://localhost:5678/webhook-test/1ab41c6e-8876-4c35-8114-a267fc022e49', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        message,
+                        sessionId,
+                        scenario,
+                        endCall : false
+                     })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                // Add bot response to chat
+                 if (data && data.output && data.output.text) {
+                    addMessage(data.output.text, false);
+                } else if (data && data.message) {
+                    addMessage(data.message, false);
+                } else {
+                    addMessage(data.output, false);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Error: Could not get response', false);
+            }
+            
+            input.value = '';
+        }
+
+        async function endCall() {
+            console.log('endCall function triggered');
+            try {
+                // const response = await fetch('http://localhost:5678/webhook/1ab41c6e-8876-4c35-8114-a267fc022e49', {
+                const response = await fetch('http://localhost:5678/webhook-test/1ab41c6e-8876-4c35-8114-a267fc022e49', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        message: "Call ended by user",
+                        sessionId,
+                        scenario: document.getElementById('service-selector').value,
+                        endCall: true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                // Add bot response to chat
+                if (data && data.output && data.output.text) {
+                    addMessage(data.output.text, false);
+                } else if (data && data.message) {
+                    addMessage(data.message, false);
+                } else {
+                    addMessage(data.output, false);
+                }
+                    
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Error: Could not get response', false);
+            }
+        }
+    </script>
+</body>
+</html>
